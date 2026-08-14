@@ -96,6 +96,42 @@ def my_getdata():
         # French word-to-index mapping, index-to-word mapping, total number of words, and bilingual sentence pairs.
         return english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs
 
+# todo 4. Data preprocessing -> Build the Dataset object.
+# 1. Call the my_getdata() function to retrieve the preprocessed data.
+english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
+
+# 2. Define MyPairsDataset, a custom dataset class.
+class MyPairsDataset(Dataset):
+    # todo 2.1 Initialization function.
+    def __init__(self, my_pairs):
+        self.my_pairs = my_pairs                # Sentence pairs, formatted as: [['English sentence from line 1', 'French sentence from line 1'], ['English sentence from line 2', 'French sentence from line 2'],...]
+        self.sample_len = len(self.my_pairs)    # Number of sentence pairs.
+
+    # todo 2.2 Method to get the total number of samples.
+    def __len__(self):
+        return self.sample_len
+
+    # todo 2.3 Method to retrieve a sample at the specified index.
+    def __getitem__(self, index):
+        # 1. Adjust the index to ensure it is within the valid range. The index cannot be less than 0 or greater than the total number of samples - 1.
+        index = min(max(index, 0), self.sample_len - 1)
+        # 2. Retrieve the bilingual sentence pair by index. x represents the English sentence, and y represents the French sentence.
+        x, y = self.my_pairs[index]
+        # 3. Convert the English sentence text into numerical values.
+        # 3.1 Split the sentence into words by spaces and get the index of each word.    Purpose: word -> corresponding word index -> word embedding.
+        x = [english_word2index[word] for word in x.split(' ')]
+        # 3.2 Append the end-of-sentence marker.
+        x.append(EOS_token)
+        # 3.3 Convert the list into a Tensor and specify the device.
+        tensor_x = torch.tensor(x, dtype=torch.long, device=device)
+
+        # 4. Convert the French sentence text into numerical values.
+        y = [french_word2index[word] for word in y.split(' ')]
+        y.append(EOS_token)
+        tensor_y = torch.tensor(y, dtype=torch.long, device=device)
+
+        # 5. Return the processed sample data.
+        return tensor_x, tensor_y
 
 if __name__ == '__main__':
     # test data processing function
