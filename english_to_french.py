@@ -133,6 +133,16 @@ class MyPairsDataset(Dataset):
         # 5. Return the processed sample data.
         return tensor_x, tensor_y
 
+# todo 5. Data procissing -> DataLoader
+def get_dataloder():
+    my_dataset = MyPairsDataset(my_pairs)
+    my_dataloder = DataLoader(my_dataset, batch_size=1, shuffle=True)
+
+    # for i, (x,y) in enumerate(my_dataloder):
+    #     print(f'the {i} batch data: {x, y}')
+    #     break
+    return my_dataloder
+
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
@@ -142,3 +152,4 @@ if __name__ == '__main__':
     # print(f'French word-to-index mapping: {french_word2index}')
     # print(f'French index-to-word mapping: {french_index2word}')
     # print(f'Number of French words: {french_word_n}')
+    get_dataloder()

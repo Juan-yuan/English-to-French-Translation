@@ -33,6 +33,7 @@ Implement a **Seq2Seq architecture based on GRU**, including:
 - **Encoder**
 - **Decoder without Attention**
 - **Decoder with Attention**
+![GRU Encoding image](./img/GRU_model.png)
 
 The goal is to understand the difference between a standard Seq2Seq architecture and an Attention-based architecture, and how Attention improves the decoder's ability to focus on relevant parts of the input sequence.
 
@@ -59,7 +60,7 @@ The evaluation should demonstrate:
 - Comparing predicted translations with the expected translations
 - Measuring model performance using appropriate evaluation metrics
 
-### 6. Additional: Tensor Flow / Computation Graph
+### 6. Additional: TensorFlow / Computation Graph
 
 Visualise the **tensor flow / computation graph** to demonstrate how tensors move through the Encoder, Decoder, and Attention mechanism during the translation process.
 
