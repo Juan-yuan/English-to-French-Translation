@@ -167,8 +167,33 @@ class EncoderGRU(nn.Module):
         self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True)
 
     # TODO 6.2 Define the forward pass.
+    def forward(self, input, hidden):
+        """
+        Forward pass.
+        :param input: Input word index sequence, [batch_size, seq_len] -> [1, 8].
+        :param hidden: Initial hidden state, [num_layer, batch_size, hidden_size] -> [1, 1, 256].
+        :return:
+        """
+        # 1. Pass the word index sequence through the embedding layer to convert word indices into word vectors.
+        # Input shape: [batch_size, seq_len] -> [1, 8]
+        # Output shape: [batch_size, seq_len, hidden_size] -> [1, 8, 256]
+        output = self.embedding(input)
 
-    # TODO 6.3 Define a custom method to initialize the hidden state, i.e., obtain h0.
+        # 2. Process the input through the GRU layer.
+        # Input:
+        #   output: Current input, i.e., [batch_size, seq_len, input_size] -> [1, 8, 256]
+        #   hidden: Initial hidden state, i.e., [num_layer, batch_size, hidden_size] -> [1, 1, 256]
+        # Output:
+        #   output: Current output, i.e., [batch_size, seq_len, hidden_size] -> [1, 8, 256]
+        #   hidden: Updated hidden state, i.e., [num_layer, batch_size, hidden_size] -> [1, 1, 256]
+        output, hidden = self.gru(output, hidden)
+
+        # 3. Return the GRU output and the final hidden state.
+        return output, hidden
+
+    # TODO 6.3 Extension: Define a custom method to initialize the hidden state, i.e., obtain h0.
+    def init_hidden(self):
+        return torch.zeros(1, 1, self.hidden_size, device=device)  # [num_layer, batch_size, hidden_size] -> [1, 1, 256]
 
 
 if __name__ == '__main__':
