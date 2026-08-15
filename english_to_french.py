@@ -143,6 +143,34 @@ def get_dataloder():
     #     break
     return my_dataloder
 
+# TODO 6. Build the GRU encoder.
+class EncoderGRU(nn.Module):
+    # TODO 6.1 Define the initialization method.
+    def __init__(self, input_size, hidden_size):
+        """
+        :param input_size: Input dimension of the encoder's word embedding layer,
+                           i.e., the vocabulary size (2803 English words).
+        :param hidden_size: Dimension of the encoder's hidden layer, 256.
+        """
+        super().__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+
+        # 3. Instantiate the word embedding layer.
+        # Input: [batch_size, seq_len] -> [batch_size, seq_len, hidden_size]
+        self.embedding = nn.Embedding(input_size, hidden_size)
+
+        # 4. Instantiate the GRU layer.
+        # Arg 1: hidden_size: Input feature dimension,  the word embedding dimension.
+        # Arg 2: hidden_size: Hidden state dimension, 256.
+        # Arg 3: batch_first: Use the format：[batch_size, seq_len, hidden_size] -> [batch size, sequence length, embedding dimension].
+        self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True)
+
+    # TODO 6.2 Define the forward pass.
+
+    # TODO 6.3 Define a custom method to initialize the hidden state, i.e., obtain h0.
+
+
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
