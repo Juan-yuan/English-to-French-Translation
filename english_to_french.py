@@ -134,7 +134,7 @@ class MyPairsDataset(Dataset):
         return tensor_x, tensor_y
 
 # todo 5. Data procissing -> DataLoader
-def get_dataloder():
+def get_dataloader():
     my_dataset = MyPairsDataset(my_pairs)
     my_dataloder = DataLoader(my_dataset, batch_size=1, shuffle=True)
 
@@ -195,6 +195,104 @@ class EncoderGRU(nn.Module):
     def init_hidden(self):
         return torch.zeros(1, 1, self.hidden_size, device=device)  # [num_layer, batch_size, hidden_size] -> [1, 1, 256]
 
+# TODO 7. Build a GRU-based decoder -> Version 1: Without an attention mechanism.
+class DecoderGRU(nn.Module):
+    # TODO 7.1 Define the initialization method.
+    def __init__(self, output_size, hidden_size):
+        """
+        Initialize the model attributes.
+        :param output_size: Output dimension, i.e., the number of French words, 4345.
+        :param hidden_size: Hidden layer dimension, i.e., 256.
+        """
+        # 1. Initialize the parent class.
+        super().__init__()
+        # 2. Save the input parameters.
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        # 3. Create the word embedding layer.
+        # Input: [batch_size, seq_len], Output: [batch_size, seq_len, hidden_size]
+        self.embedding = nn.Embedding(output_size, hidden_size)
+        # 4. Create the GRU layer.
+        self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True)
+        # 5. Create the linear layer.
+        # Input: [1, hidden_size], Output: [1, output_size]
+        self.out = nn.Linear(hidden_size, output_size)
+        # 6. Create the softmax layer -> Obtain the probability distribution.
+        # dim=-1 means normalizing along the last dimension (the vocabulary dimension).
+        self.softmax = nn.LogSoftmax(dim=-1)
+
+
+    # TODO 7.2 Define the forward pass.
+    def forward(self, input, hidden):
+        # 1. Process the input through the word embedding layer.
+        output = self.embedding(input)
+        # 2. Apply the ReLU activation function.
+        output = F.relu(output)
+        # 3. Process the input through the GRU layer.
+        # Input:
+        #   output: Current input, i.e., [batch_size, 1, hidden_size] -> [1, 1, 256]
+        #           The decoder generates the translation one word at a time.
+        #   hidden: Previous hidden state, i.e., [num_layer, batch_size, hidden_size] -> [1, 1, 256]
+        # Output:
+        #   output: Current output, i.e., [batch_size, 1, hidden_size] -> [1, 1, 256]
+        #   hidden: Updated hidden state, i.e., [num_layer, batch_size, hidden_size] -> [1, 1, 256]
+        output, hidden = self.gru(output, hidden)
+
+        # 3. Process the output through the linear and softmax layers.
+        output = self.softmax(self.out(output[0]))
+
+        # 4. Return the output and hidden state.
+        return output, hidden
+
+
+    # TODO 7.3 Extension: Define a custom method to initialize the hidden state, i.e., obtain h0.
+    def init_hidden(self):
+        return torch.zeros(1, 1, self.hidden_size, device=device)
+
+# TODO 8. Test the GRU-based decoder -> Version 1: Without Attention.
+def dm_test_decoder():
+    # 1. Get the data loader.
+    my_dataloader = get_dataloader()
+    # 2. Initialize the encoder model and move it to the GPU.
+    my_encoder_gru = EncoderGRU(input_size=english_word_n, hidden_size=256).to(device)
+    print(f'my_encoder_gru: {my_encoder_gru}')
+
+    # 3. Initialize the decoder model and move it to the GPU.
+    my_decoder_gru = DecoderGRU(output_size=french_word_n, hidden_size=256).to(device)
+    print(f'my_decoder_gru: {my_decoder_gru}')
+
+    # 4. Test the complete encoding -> decoding process.
+    # 4.1 Get one batch of data (one sample) from the data loader.
+    for i, (x, y) in enumerate(my_dataloader):
+        # 4.2 Print information about the input data.
+        print(f'Input data information (English sentence): {x.shape}, {x}')      # [1, 8]
+        print(f'Input data information (French sentence): {y.shape}, {y}')      # [1, 6]
+
+        # 4.3 Encoding process: Encode the English sentence into a sequence of hidden states.
+        # Initialize the encoder.
+        h0 = my_encoder_gru.init_hidden()
+        # Encoder forward pass.
+        encoder_output_c, hidden = my_encoder_gru(x, h0)
+        print(f'Encoder output: {encoder_output_c.shape}')       # Shape: [1, 8, 256]
+
+        # 4.4 Decoding process: Decode the hidden state sequence into a French sentence.
+        # print(f'Observe: Output of the last time step: {encoder_output_c[0][-1].shape}, {encoder_output_c[0][-1]}') # [8, 256] -> last one [256]
+
+        # 4.5 Specific decoding process -> Generate the translation one word at a time.
+        # 4.5.1 Iterate over each time step of the target sentence.
+        for i in range(y.shape[1]):
+            # 4.5.2 Extract the target word index at the current time step.
+            # y[0][i]: Get the index of the i-th word from the first sample in the batch.
+            # view(1, -1): Convert the scalar into a [1, 1] tensor to match the decoder input requirements.
+            tmp = y[0][i].view(1, -1)
+            # 4.5.3 Perform the decoder forward pass.
+            output, hidden = my_decoder_gru(tmp, hidden)
+            # Print information about the decoder output.
+            print(f'Probability distribution generated at each decoding time step: {output.size()}, {output.shape}')
+        print('\n' * 5)
+
+        break
+
 
 if __name__ == '__main__':
     # test data processing function
@@ -205,4 +303,5 @@ if __name__ == '__main__':
     # print(f'French word-to-index mapping: {french_word2index}')
     # print(f'French index-to-word mapping: {french_index2word}')
     # print(f'Number of French words: {french_word_n}')
-    get_dataloder()
+    get_dataloader()
+    dm_test_decoder()
