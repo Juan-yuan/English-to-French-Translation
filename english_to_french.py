@@ -373,6 +373,81 @@ class AttnDecoderGRU(nn.Module):
         return torch.zeros(1, 1, self.hidden_size, device=device)
 
 
+# todo 10. Test the GRU-based decoder -> Test Version 2: with Attention mechanism
+def dm_test_attn_decoder():
+    # 1. Get the data loader.
+    my_dataloader = get_dataloader()
+
+    # 2. Model initialization.
+    # 2.1 Create the encoder.
+    # Param 1: English vocabulary size (2803), Param 2: Hidden size (256)
+    my_encoder = EncoderGRU(english_word_n, 256).to(device)
+
+    # 2.2 Create the decoder.
+    # Param 1: French vocabulary size (4345), Param 2: Hidden size (256)
+    my_decoder = AttnDecoderGRU(french_word_n, 256).to(device)
+
+    # 3. Model training (inference) stage.
+    # 3.1 Get one sample from the data loader.
+    for i, (x, y) in enumerate(my_dataloader):
+        # 3.2 Print the input information.
+        print(f'x (English sentence): {x.shape}, {x}')
+        print(f'y (French sentence): {y.shape}, {y}')
+
+        # 3.3 Encoding process -> encode the English sentence into hidden states.
+        # Initialize the encoder hidden state.
+        hidden = my_encoder.init_hidden()
+
+        # output: Hidden state at each time step -> [1, seq_len, 256]
+        # hidden: Hidden state from the last time step -> [1, 1, 256]
+        output, hidden = my_encoder(x, hidden)
+
+        # 3.4 Prepare the encoder outputs for the Attention mechanism.
+        # Create a fixed-size tensor to store the encoder outputs.
+        # Shape: [10, 256]
+        encoder_output_c = torch.zeros(
+            MAX_LENGTH,
+            my_encoder.hidden_size,
+            device=device
+        )
+
+        # 3.5 Copy the actual encoder outputs into the fixed-size tensor.
+        for idx in range(output.shape[1]):
+            encoder_output_c[idx] = output[0, idx]
+
+        # 3.6 Decoding process: decode the hidden states into a French sentence.
+        # The decoder generates the translation one word at a time.
+        # 3.6.1 Iterate through each time step of the target sentence.
+        for i in range(y.shape[1]):
+
+            # 3.6.2 Extract the target word index at the current time step.
+            tmp = y[0][i].view(1, -1)
+
+            # 3.6.3 Perform the decoder forward pass.
+            # Parameter details:
+            #   tmp: Current input word index -> [1, 1]
+            #   hidden: Hidden state from the previous time step -> [1, 1, 256]
+            #   encoder_output_c: Encoder outputs from all time steps -> [10, 256]
+
+            # Return values:
+            #   output: Output probability distribution at the current time step -> [1, 4345]
+            #   hidden: Updated hidden state at the current time step -> [1, 1, 256]
+            #   attn_weights: Attention weight distribution at the current time step -> [1, 10]
+            output, hidden, attn_weights = my_decoder(
+                tmp,
+                hidden,
+                encoder_output_c
+            )
+
+            # 3.6.4 Print the output shapes.
+            print(f'decoder output.shape: {output.shape}')              # [1, 4345]
+            print(f'decoder hidden.shape: {hidden.shape}')              # [1, 1, 256]
+            print(f'decoder attn_weights.shape: {attn_weights.shape}')  # [1, 10]
+            print('\n' * 2)
+
+        break       # Test only one sample.
+
+
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
@@ -382,5 +457,6 @@ if __name__ == '__main__':
     # print(f'French word-to-index mapping: {french_word2index}')
     # print(f'French index-to-word mapping: {french_index2word}')
     # print(f'Number of French words: {french_word_n}')
-    get_dataloader()
-    dm_test_decoder()
+    # get_dataloader()
+    # dm_test_decoder()
+    dm_test_attn_decoder()
