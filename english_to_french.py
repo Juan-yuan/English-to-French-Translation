@@ -143,7 +143,7 @@ def get_dataloader():
     #     break
     return my_dataloder
 
-# TODO 6. Build the GRU encoder.
+# todo 6. Build the GRU encoder.
 class EncoderGRU(nn.Module):
     # TODO 6.1 Define the initialization method.
     def __init__(self, input_size, hidden_size):
@@ -195,7 +195,7 @@ class EncoderGRU(nn.Module):
     def init_hidden(self):
         return torch.zeros(1, 1, self.hidden_size, device=device)  # [num_layer, batch_size, hidden_size] -> [1, 1, 256]
 
-# TODO 7. Build a GRU-based decoder -> Version 1: Without an attention mechanism.
+# todo 7. Build a GRU-based decoder -> Version 1: Without attention mechanism.
 class DecoderGRU(nn.Module):
     # TODO 7.1 Define the initialization method.
     def __init__(self, output_size, hidden_size):
@@ -249,7 +249,7 @@ class DecoderGRU(nn.Module):
     def init_hidden(self):
         return torch.zeros(1, 1, self.hidden_size, device=device)
 
-# TODO 8. Test the GRU-based decoder -> Version 1: Without Attention.
+# todo 8. Test the GRU-based decoder -> Version 1: Without Attention.
 def dm_test_decoder():
     # 1. Get the data loader.
     my_dataloader = get_dataloader()
@@ -292,6 +292,85 @@ def dm_test_decoder():
         print('\n' * 5)
 
         break
+
+# todo 9. Build a GRU-based decoder -> Version 2: with Attention mechanism
+class AttnDecoderGRU(nn.Module):
+    # todo 9.1 Initialization function.
+    def __init__(self, output_size, hidden_size, dropout_p=0.1, max_length=MAX_LENGTH):
+        """
+        Initialize the decoder attributes.
+        :param output_size: Target (French) vocabulary size.
+        :param hidden_size: Hidden layer dimension -> consistent with the encoder.
+        :param dropout_p: Dropout probability -> helps prevent overfitting.
+        :param max_length: Maximum sentence length -> limits the attention computation range.
+        """
+        # 1. Initialize the parent class.
+        super().__init__()
+        # 2. Store the input parameters.
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.dropout_p = dropout_p
+        self.max_length = max_length
+        # 3. Word embedding layer.
+        # Input shape: [batch_size, seq_len] -> [1, 1]
+        # Output shape: [batch_size, seq_len, hidden_size] -> [1, 1, 256]
+        self.embedding = nn.Embedding(self.output_size, self.hidden_size)
+        # 4. Attention weight calculation layer.
+        # Param 1: Concatenated query vector and hidden state -> 512
+        # Param 2: Attention weight distribution -> up to 10 words
+        self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
+        # 5. Attention fusion layer, combining the word embedding and attention context.
+        self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        # 6. Dropout layer, randomly drops some neurons to help prevent overfitting.
+        self.dropout = nn.Dropout(self.dropout_p)
+        # 7. GRU layer.
+        self.gru = nn.GRU(self.hidden_size, self.hidden_size, batch_first=True)
+        # 8. Output layer: maps the GRU hidden state to the target vocabulary size.
+        self.out = nn.Linear(self.hidden_size, self.output_size)
+        # 9. LogSoftmax layer -> maps the output to a log-probability distribution.
+        self.softmax = nn.LogSoftmax(dim=-1)
+
+
+    # todo 9.2 Forward propagation.
+    def forward(self, input, hidden, encoder_outputs):
+        """
+        Forward propagation function.
+        :param input: Input word index at the current time step -> [batch_size, 1] -> [1, 1]
+        :param hidden: Hidden state from the previous time step -> [1, batch_size, hidden_size] -> [1, 1, 256]
+        :param encoder_outputs: Outputs from all encoder time steps -> [batch_size, seq_len, hidden_size] -> [1, 8, 256]
+        :return:
+        """
+        # 1. Word embedding layer.
+        # Input shape: [batch_size, 1] -> [1, 1], resulting in [1, 1, 256].
+        embedded = self.embedding(input)
+        # 2. Apply Dropout for regularization.
+        embedded = self.dropout(embedded)
+        # 3. Calculate the attention weights.
+        # step1: torch.cat((embedded[0], hidden[0]), 1) -> [1, 512]
+        # step2: self.attn(torch.cat((embedded[0], hidden[0]), 1)) -> map through a linear layer to the attention length -> [1, 10]
+        # step3: Apply softmax() to convert the scores into a probability distribution -> [1, 10]
+        attn_weights = F.softmax(self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
+        # 4. Calculate the attention context -> the aggregated information from the encoder.
+        attn_applied = torch.bmm(attn_weights.unsqueeze(0), encoder_outputs.unsqueeze(0))
+        # 5. Attention fusion layer, combining the word embedding and attention context.
+        output = torch.cat((embedded[0], attn_applied[0]), 1)       # [1, 1, 512]
+        output = self.attn_combine(output).unsqueeze(0)             # [1, 1, 256]
+        # 6. Apply the activation function to enhance the model's nonlinear capability.
+        output = F.relu(output)     # Enhanced Q -> the input for the current time step.
+        # 7. GRU layer: processes sequential data and maintains the hidden state.
+        output, hidden = self.gru(output, hidden)
+        # 8. Map the output to the target vocabulary size and apply LogSoftmax.
+        output = self.softmax(self.out(output[0]))
+        # 9. Return the results.
+        # Param 1: Output probability distribution at the current time step.    [1, 4345]
+        # Param 2: Updated hidden state (i.e., the hidden state for the current time step). [1, 1, 256]
+        # Param 3: Attention weight distribution at the current time step, used for visualization. If visualization is not needed, it can be omitted.
+        return output, hidden, attn_weights
+
+    # todo 9.3 Extended_custom initialization function -> used to obtain h0.
+    def init_hidden(self):
+        # Shape: [1, 1, 256]
+        return torch.zeros(1, 1, self.hidden_size, device=device)
 
 
 if __name__ == '__main__':
