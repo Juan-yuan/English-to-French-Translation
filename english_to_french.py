@@ -671,6 +671,63 @@ def seq2seq_evaluate(x, my_encoder_rnn, my_attn_decoder_rnn):
     # decoder_attentions: Attention weight matrix, [seq_len, MAX_LENGTH]
     return decode_words, decoder_attentions[:idx + 1]
 
+# todo 14. Call the model evaluation function, load the trained models, and translate custom samples.
+# Model paths.
+PATH1 = './model/my_encoder_rnn_5.pth'
+PATH2 = './model/my_attn_decoder_rnn_5.pth'
+
+# Define the function to evaluate the model.
+def dm_test_seq2seq_evaluate():
+    # 1. Prepare the data.
+    my_pairs_dataset = MyPairsDataset(my_pairs)
+    my_dataloader = DataLoader(my_pairs_dataset, batch_size=1, shuffle=False)
+    # 2. Load the encoder model.
+    input_size = english_word_n
+    hidden_size = 256
+    my_encoder_rnn = EncoderGRU(input_size, hidden_size).to(device)
+    # 3. Load the model weights.
+    # map_location: Ensures the model can be loaded on both CPU and GPU (CUDA).
+    # Normally, the model should be trained and evaluated on the same device.
+    # Using map_location allows a model trained on GPU to be evaluated on CPU.
+    # weights_only=True: Load only the model weights.
+    my_encoder_rnn.load_state_dict(torch.load(PATH1, map_location='cpu', weights_only=True), False)
+    print(f'my_encoder_rnn encoder model architecture: {my_encoder_rnn}')
+
+    # 4. Load the decoder model.
+    input_size = french_word_n
+    my_attn_decoder_rnn = AttnDecoderGRU(input_size, hidden_size).to(device)
+    my_attn_decoder_rnn.load_state_dict(torch.load(PATH2, map_location='cpu', weights_only=True), False)
+    print(f'my_attn_decoder_rnn decoder model architecture: {my_attn_decoder_rnn}')
+
+    # 5. Define custom test samples.
+    my_sample_pairs = [
+        # Format: [English sentence, French sentence]
+        ['i m wet .', 'je suis mouillee .'],
+        ['i m glad you came over .', 'je me rejouis que vous soyez venue .'],
+        ['she s pleased with her new dress .', 'sa nouvelle robe lui plait .'],
+    ]
+    print(f'Custom test samples: {my_sample_pairs}')
+
+    # 6. Translate each sample.
+    for index, pair in enumerate(my_sample_pairs):
+        x = pair[0]     # English sentence.
+        y = pair[1]     # French sentence.
+
+        # 6.1 Convert text to numerical values -> English sentence -> index list.
+        tmpx = [english_word2index[word] for word in x.split(' ')]
+        tmpx.append(EOS_token)      # Add the end-of-sentence token.
+        tensor_x = torch.tensor(tmpx, dtype=torch.long, device=device).view(1, -1)
+
+        # 6.2 Run model prediction.
+        decode_words, attentions = seq2seq_evaluate(tensor_x, my_encoder_rnn, my_attn_decoder_rnn)
+        # 6.3 Convert the predicted words into a sentence.
+        output_sentence = ' '.join(decode_words)
+        print(f'Input (original English sentence): {x}')
+        print(f'Input (original French sentence): {y}')
+        print(f'Output (predicted French sentence): {output_sentence}')
+        print('-' * 30)
+
+
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()

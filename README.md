@@ -55,6 +55,7 @@ The training process should cover:
 - Teacher forcing
 - Training and validation loss monitoring
 
+### 5. Test train_seq2seq function:
 After training for 3,000 samples per epoch, we can visualize the training loss curve:
 
 ![Seq2Seq Loss Curve](./img/seq2seq_loss.png)
