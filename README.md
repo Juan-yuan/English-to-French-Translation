@@ -34,11 +34,15 @@ Implement a **Seq2Seq architecture based on GRU**, including:
 
 - **Decoder without Attention**
 
-<img src="img/GRU_model_without_attention.png" alt="GRU Encoding image" width="600">
+<p align="center">
+  <img src="img/GRU_model_without_attention.png" alt="GRU Encoding without Attention" width="380">
+</p>
 
 - **Decoder with Attention**
 
-<img src="img/GRU_model_with_attention.png" alt="GRU Encoding image" width="600">
+<p align="center">
+  <img src="img/GRU_model_with_attention.png" alt="GRU Encoding with Attention" width="380">
+</p>
 
 The goal is to understand the difference between a standard Seq2Seq architecture and an Attention-based architecture, and how Attention improves the decoder's ability to focus on relevant parts of the input sequence.
 
@@ -55,16 +59,21 @@ The training process should cover:
 - Teacher forcing
 - Training and validation loss monitoring
 
-### 5. Test train_seq2seq function:
-After training for 3,000 samples per epoch, we can visualize the training loss curve:
+### 5. Test `train_seq2seq` Function
 
-<img src="./img/seq2seq_loss.png" alt="Seq2Seq Loss Curve" width="600">
+After training for 3,000 samples per epoch, we can visualise the training loss curve:
+
+<p align="center">
+  <img src="./img/seq2seq_loss.png" alt="Seq2Seq Loss Curve" width="600">
+</p>
 
 - The loss curve is automatically saved to `./img/seq2seq_loss.png`.
 
-Trained data suto-stored into model folder:
+The trained model is automatically stored in the `model` folder:
 
-<img src="./img/trained_model.png" alt="Trained Model" width="600">
+<p align="center">
+  <img src="./img/trained_model.png" alt="Trained Model" width="600">
+</p>
 
 ### 6. Model Evaluation
 
@@ -76,19 +85,28 @@ The evaluation should demonstrate:
 - Comparing predicted translations with the expected translations
 - Measuring model performance using appropriate evaluation metrics
 
-### 8. call dm_test_seq2seq_evaluate and pass sample data to compare the model:
+### 7. Call `dm_test_seq2seq_evaluate` and Pass Sample Data
 
-<img src="img/sample_data.png" alt="Sample Data" width="600">
+Call `dm_test_seq2seq_evaluate` and pass sample data to compare the model's predicted translations with the expected translations.
 
-<img src="img/evaluate_output.png" alt="Evaluate Output" width="600">
+<p align="center">
+  <img src="img/sample_data.png" alt="Sample Data" width="600">
+</p>
 
-### 6. Additional: Attention Weight Visualisation
+<p align="center">
+  <img src="img/evaluate_output.png" alt="Evaluate Output" width="600">
+</p>
+
+### 8. Additional: Attention Weight Visualisation
 
 Visualise the attention matrix to demonstrate how the decoder dynamically focuses on different encoder hidden states when generating each target token.
 
 This helps illustrate how the Attention mechanism learns source-target alignment during translation.
 
-<img src="img/attention_weight_visualisation.png" alt="Attention Weight Visualisation" width="600">
+<p align="center">
+  <img src="img/attention_weight_visualisation.png" alt="Attention Weight Visualisation" width="600">
+</p>
+
 ---
 
 # Extension: Running PyTorch on a GPU
@@ -122,11 +140,14 @@ nvidia-smi
 ```
 
 ### macOS — Apple Silicon (M1/M2/M3/M4/M5)
+
+To check the Mac GPU, open Terminal and run:
+
 ```bash
 system_profiler SPDisplaysDataType
 ```
 
-To check the Mac GPU, open Terminal and run:
+To check whether PyTorch can access the MPS GPU, run:
 ```python
 import torch
 
@@ -134,4 +155,9 @@ print("MPS built:", torch.backends.mps.is_built())
 print("MPS available:", torch.backends.mps.is_available())
 ```
 
-
+Configure PyTorch to use the MPS GPU:
+```python
+device = torch.device(
+    "mps" if torch.backends.mps.is_available() else "cpu"
+)
+```
