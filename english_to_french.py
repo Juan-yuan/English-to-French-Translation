@@ -443,11 +443,108 @@ def dm_test_attn_decoder():
             print(f'decoder output.shape: {output.shape}')              # [1, 4345]
             print(f'decoder hidden.shape: {hidden.shape}')              # [1, 1, 256]
             print(f'decoder attn_weights.shape: {attn_weights.shape}')  # [1, 10]
-            print('\n' * 2)
+            print('\n')
 
         break       # Test only one sample.
 
 
+# todo 11. Build the model's internal iterative training function -> complete the training process for a single batch.
+# Define the model training parameters.
+# Learning rate, number of training epochs, Teacher Forcing ratio, output logging interval (print once every 1000 samples),
+# and plotting interval (plot once every 100 samples).
+my_lr, epochs, teacher_forcing_ratio, print_interval_num, plot_interval_num = 1e-4, 5, 0.5, 1000, 100
+
+# Define the function to train a single batch: encoding -> decoding -> backpropagation -> parameter optimization...
+def train_iters(x, y, my_encoder_rnn, my_attn_decoder_rnn, myadam_encode, myadam_decode, my_crossentropy_loss):
+    """
+    This function trains a single batch: encoding -> decoding -> backpropagation -> parameter optimization...
+    :param x: input sequence -> [batch_size, seq_len], [1, seq_len]
+    :param y: target sequence -> [batch_size, seq_len], [1, seq_len]
+    :param my_encoder_rnn: encoder object
+    :param my_attn_decoder_rnn: decoder object with attention mechanism
+    :param myadam_encode: encoder optimizer
+    :param myadam_decode: decoder optimizer
+    :param my_crossentropy_loss: loss function
+    :return:
+    """
+    # 1. Encoding stage -> convert the input sequence into a context representation. Initial hidden state: [1, 1, 256]
+    encoder_hidden = my_encoder_rnn.init_hidden()
+    encoder_output, encoder_hidden = my_encoder_rnn(x, encoder_hidden)
+
+    # 2. Prepare decoder parameters.
+    # 2.1 Build the encoder output tensor for attention calculation. Shape: [10, 256]
+    encoder_output_c = torch.zeros(MAX_LENGTH, my_encoder_rnn.hidden_size, device=device)
+    # Copy the actual encoder output into a fixed-length tensor: [assuming 6 words, 256] -> [10, 256]
+    for idx in range(x.shape[1]):
+        encoder_output_c[idx] = encoder_output[0, idx]
+
+    # 2.2 Initialize the decoder hidden state.
+    decoder_hidden = encoder_hidden     # Use the encoder's final hidden state as the decoder's initial hidden state.
+
+    # 2.3 Initial decoder input.
+    input_y = torch.tensor([[SOS_token]], device=device)  # [1, 1]
+
+    # 3. Initialize the loss.
+    my_loss = 0.0
+    y_len = y.shape[1]      # Target sequence length (i.e., the length of the French sentence to predict), e.g., 8
+
+    # 4. Decide whether to use Teacher Forcing based on probability.
+    use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
+    if use_teacher_forcing:
+        # 4.1 Teacher Forcing model: use the ground-truth label as the input for the next step.
+        for i in range(y_len):
+            # Input:
+            #   input_y -> [1, 1]
+            #   decoder_hidden -> [1, 1, 256]
+            #   encoder_output_c -> [10, 256]
+            # Output:
+            #   output_y -> [1, 4345]
+            #   decoder_hidden -> [1, 1, 256]
+            #   attn_weights -> [1, 10]
+            output_y, decoder_hidden, attn_weights = my_attn_decoder_rnn(input_y, decoder_hidden, encoder_output_c)
+            # Get the ground-truth label for the current time step.
+            target_y = y[0][i].view(1)
+            # Accumulate the loss.
+            my_loss += my_crossentropy_loss(output_y, target_y)
+            # Use the ground-truth label directly as the input for the next time step.
+            input_y = y[0][i].view(1, -1)
+            # input_y = target_y            # Same effect as above.
+    else:
+        # 4.2 Non-Teacher Forcing model: use the predicted label from the previous time step as the input for the next step.
+        for i in range(y_len):
+            # Input:
+            #   input_y -> [1, 1]
+            #   decoder_hidden -> [1, 1, 256]
+            #   encoder_output_c -> [10, 256]
+            # Output:
+            #   output_y -> [1, 4345]
+            #   decoder_hidden -> [1, 1, 256]
+            #   attn_weights -> [1, 10]
+            output_y, decoder_hidden, attn_weights = my_attn_decoder_rnn(input_y, decoder_hidden, encoder_output_c)
+            # Get the ground-truth label for the current time step.
+            target_y = y[0][i].view(1)
+            # Accumulate the loss.
+            my_loss += my_crossentropy_loss(output_y, target_y)
+            # Get the next predicted word, i.e., the index and probability of the word with the highest probability.
+            topv, topi = output_y.topk(1)
+            # Stop prediction if the end-of-sentence token is predicted.
+            if topi.squeeze().item() == EOS_token:
+                break
+            # If the end-of-sentence token was not predicted, use the predicted word (label) as the input for the next time step.
+            input_y = topi.detach()         # [1, 1]
+
+    # 5. Backpropagation + parameter update.
+    myadam_encode.zero_grad()       # Clear gradients for the encoder.
+    myadam_decode.zero_grad()       # Clear gradients for the decoder.
+
+    # Perform backpropagation and calculate gradients.
+    my_loss.backward()
+    # Update parameters.
+    myadam_encode.step()
+    myadam_decode.step()
+
+    # 6. Return the average loss.
+    return my_loss.item() / y_len
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
