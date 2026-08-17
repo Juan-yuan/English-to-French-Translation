@@ -616,6 +616,61 @@ def train_seq2seq():
     return plot_loss_total      # Training loss list -> average loss every 100 samples.
 
 
+# todo 13. Build the model evaluation (testing) function and use the trained Seq2Seq model for translation.
+# Param 1: Input English sentence index tensor -> [1, seq_len]
+# Param 2: Model encoder object
+# Param 3: Model decoder object
+def seq2seq_evaluate(x, my_encoder_rnn, my_attn_decoder_rnn):
+    # Extension: Disable gradient calculation to save memory and speed up inference.
+    with torch.no_grad():
+        # 1. Encoding stage -> convert the input English sentence into a hidden state.
+        encode_hidden = my_encoder_rnn.init_hidden()
+        encode_output, encode_hidden = my_encoder_rnn(x, encode_hidden)
+
+        # 2. Prepare decoder parameters.
+        # 2.1 Build a fixed-length encoder output tensor.
+        encoder_output_c = torch.zeros(MAX_LENGTH, my_encoder_rnn.hidden_size, device=device)
+        for idx in range(x.shape[1]):
+            encoder_output_c[idx] = encode_output[0, idx]
+
+        # 2.2 Initial decoder hidden state.
+        decode_hidden = encode_hidden
+
+        # 2.3 Initial decoder input: Start-of-sentence token.
+        input_y = torch.tensor([[SOS_token]], device=device)
+
+        # 3. Autoregressive decoding process -> generate the target sentence token by token.
+        # Store the decoded French words.
+        decode_words = []
+        # Initialize the attention matrix.
+        decoder_attentions = torch.zeros(MAX_LENGTH, MAX_LENGTH)
+
+        # Start decoding.
+        for idx in range(MAX_LENGTH):
+            # 3.1 Decoder -> forward pass.
+            # Input: current input word index, decoder hidden state, encoder output tensor.
+            # Output: probability distribution for the next word, updated hidden state, and attention weights.
+            output_y, decode_hidden, attn_weights = my_attn_decoder_rnn(input_y, decode_hidden, encoder_output_c)
+            # 3.2 Record the attention weights.
+            decoder_attentions[idx] = attn_weights
+            # 3.3 Predict the next word.
+            topv, topi = output_y.topk(1)       # Get the index and probability of the word with the highest probability.
+            # 3.4 Handle the termination condition: stop generation if the EOS token is predicted.
+            if topi.squeeze().item() == EOS_token:
+                decode_words.append('<EOS>')
+                break
+            else:
+                # 3.5 Otherwise, add the predicted word to the result list.
+                decode_words.append(french_index2word[topi.squeeze().item()])
+
+        # 3.6 Update the input: use the current predicted word as the input for the next time step.
+        input_y = topi.detach()
+
+    # Return the decoded result and attention matrix.
+    # decode_words: List of decoded French words.
+    # decoder_attentions: Attention weight matrix, [seq_len, MAX_LENGTH]
+    return decode_words, decoder_attentions[:idx + 1]
+
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
