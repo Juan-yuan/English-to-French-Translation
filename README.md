@@ -34,11 +34,11 @@ Implement a **Seq2Seq architecture based on GRU**, including:
 
 - **Decoder without Attention**
 
-![GRU Encoding image](img/GRU_model_without_attention.png)
+<img src="img/GRU_model_without_attention.png" alt="GRU Encoding image" width="600">
 
 - **Decoder with Attention**
 
-![GRU Encoding image](img/GRU_model_with_attention.png)
+<img src="img/GRU_model_with_attention.png" alt="GRU Encoding image" width="600">
 
 The goal is to understand the difference between a standard Seq2Seq architecture and an Attention-based architecture, and how Attention improves the decoder's ability to focus on relevant parts of the input sequence.
 
@@ -58,15 +58,15 @@ The training process should cover:
 ### 5. Test train_seq2seq function:
 After training for 3,000 samples per epoch, we can visualize the training loss curve:
 
-![Seq2Seq Loss Curve](./img/seq2seq_loss.png)
+<img src="./img/seq2seq_loss.png" alt="Seq2Seq Loss Curve" width="600">
 
 - The loss curve is automatically saved to `./img/seq2seq_loss.png`.
 
 Trained data suto-stored into model folder:
 
-![img.png](./img/trained_model.png)
+<img src="./img/trained_model.png" alt="Trained Model" width="600">
 
-### 5. Model Evaluation
+### 6. Model Evaluation
 
 Evaluate the trained model using unseen data.
 
@@ -76,12 +76,19 @@ The evaluation should demonstrate:
 - Comparing predicted translations with the expected translations
 - Measuring model performance using appropriate evaluation metrics
 
-### 6. Additional: TensorFlow / Computation Graph
+### 8. call dm_test_seq2seq_evaluate and pass sample data to compare the model:
 
-Visualise the **tensor flow / computation graph** to demonstrate how tensors move through the Encoder, Decoder, and Attention mechanism during the translation process.
+<img src="img/sample_data.png" alt="Sample Data" width="600">
 
-This provides a clearer understanding of the data flow and the internal structure of the Seq2Seq model.
+<img src="img/evaluate_output.png" alt="Evaluate Output" width="600">
 
+### 6. Additional: Attention Weight Visualisation
+
+Visualise the attention matrix to demonstrate how the decoder dynamically focuses on different encoder hidden states when generating each target token.
+
+This helps illustrate how the Attention mechanism learns source-target alignment during translation.
+
+<img src="img/attention_weight_visualisation.png" alt="Attention Weight Visualisation" width="600">
 ---
 
 # Extension: Running PyTorch on a GPU
@@ -104,9 +111,27 @@ Therefore:
 
 ---
 
-## 2. Check the CUDA Version
+## 2. Check the GPU / CUDA Version
+
+### Windows / Linux — NVIDIA GPU
 
 On a machine with an NVIDIA GPU, open a terminal or Command Prompt and run:
 
 ```bash
 nvidia-smi
+```
+
+### macOS — Apple Silicon (M1/M2/M3/M4/M5)
+```bash
+system_profiler SPDisplaysDataType
+```
+
+To check the Mac GPU, open Terminal and run:
+```python
+import torch
+
+print("MPS built:", torch.backends.mps.is_built())
+print("MPS available:", torch.backends.mps.is_available())
+```
+
+

@@ -599,8 +599,8 @@ def train_seq2seq():
 
             # 6.5 Temporary extension: stop training after 3000 samples per epoch.
             # Remove this condition in the actual implementation.
-            if item > 3000:
-                break
+            # if item > 3000:
+            #     break
 
         # 7. Reaching this point means one epoch has finished. Save the models.
         torch.save(my_encoder_rnn.state_dict(), f'./model/my_encoder_rnn_{epoch_idx}.pth')
@@ -663,8 +663,8 @@ def seq2seq_evaluate(x, my_encoder_rnn, my_attn_decoder_rnn):
                 # 3.5 Otherwise, add the predicted word to the result list.
                 decode_words.append(french_index2word[topi.squeeze().item()])
 
-        # 3.6 Update the input: use the current predicted word as the input for the next time step.
-        input_y = topi.detach()
+            # 3.6 Update the input: use the current predicted word as the input for the next time step.
+            input_y = topi.detach()
 
     # Return the decoded result and attention matrix.
     # decode_words: List of decoded French words.
@@ -691,22 +691,20 @@ def dm_test_seq2seq_evaluate():
     # Using map_location allows a model trained on GPU to be evaluated on CPU.
     # weights_only=True: Load only the model weights.
     my_encoder_rnn.load_state_dict(torch.load(PATH1, map_location='cpu', weights_only=True), False)
-    print(f'my_encoder_rnn encoder model architecture: {my_encoder_rnn}')
+    print(f'Encoder GRU model: {my_encoder_rnn}')
 
     # 4. Load the decoder model.
     input_size = french_word_n
     my_attn_decoder_rnn = AttnDecoderGRU(input_size, hidden_size).to(device)
     my_attn_decoder_rnn.load_state_dict(torch.load(PATH2, map_location='cpu', weights_only=True), False)
-    print(f'my_attn_decoder_rnn decoder model architecture: {my_attn_decoder_rnn}')
+    print(f'Version Attention Decoder: with Attention encoder model: {my_attn_decoder_rnn}')
 
     # 5. Define custom test samples.
     my_sample_pairs = [
-        # Format: [English sentence, French sentence]
         ['i m wet .', 'je suis mouillee .'],
         ['i m glad you came over .', 'je me rejouis que vous soyez venue .'],
         ['she s pleased with her new dress .', 'sa nouvelle robe lui plait .'],
     ]
-    print(f'Custom test samples: {my_sample_pairs}')
 
     # 6. Translate each sample.
     for index, pair in enumerate(my_sample_pairs):
@@ -728,6 +726,54 @@ def dm_test_seq2seq_evaluate():
         print('-' * 30)
 
 
+# todo 15. Visualize the attention tensor.
+def dm_test_Attention():
+    # Instantiate the dataset object.
+    mypairsdataset = MyPairsDataset(my_pairs)
+    # Instantiate the dataloader.
+    mydataloader = DataLoader(dataset=mypairsdataset, batch_size=1, shuffle=False)
+
+    # Instantiate the model.
+    input_size = english_word_n
+    hidden_size = 256  # 256 is recommended based on the observed results.
+    my_encoderrnn = EncoderGRU(input_size, hidden_size).to(device)
+    # my_encoderrnn.load_state_dict(torch.load(PATH1))
+    my_encoderrnn.load_state_dict(torch.load(PATH1, map_location='cpu', weights_only=True), False)
+
+    # Instantiate the model.
+    input_size = french_word_n
+    hidden_size = 256  # 256 is recommended based on the observed results.
+    my_attndecoderrnn = AttnDecoderGRU(input_size, hidden_size).to(device)
+    # my_attndecoderrnn.load_state_dict(torch.load(PATH2))
+    my_attndecoderrnn.load_state_dict(torch.load(PATH2, map_location='cpu', weights_only=True), False)
+
+    sentence = "we re both teachers ."
+    # Convert sample x from text to numerical values.
+    tmpx = [english_word2index[word] for word in sentence.split(' ')]
+    tmpx.append(EOS_token)
+    tensor_x = torch.tensor(tmpx, dtype=torch.long, device=device).view(1, -1)
+
+    decoded_words, attentions = seq2seq_evaluate(
+        tensor_x,
+        my_encoderrnn,
+        my_attndecoderrnn
+    )
+
+    print('decoded_words->', decoded_words)
+
+    # print('\n')
+    # print('English', sentence)
+    # print('French', output_sentence)
+
+    plt.matshow(attentions.cpu().numpy())  # Display the attention weights as a matrix.
+    # Save the image.
+    plt.savefig("./s2s_attn.png")
+    plt.show()
+
+    print('attentions.cpu().numpy()--->\n', attentions.cpu().numpy())
+    print('attentions.size--->', attentions.size())
+
+# todo 15
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
@@ -740,4 +786,6 @@ if __name__ == '__main__':
     # get_dataloader()
     # dm_test_decoder()
     # dm_test_attn_decoder()
-    train_seq2seq()
+    # train_seq2seq()
+    # dm_test_seq2seq_evaluate()
+    dm_test_Attention()
