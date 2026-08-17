@@ -31,9 +31,14 @@ This includes:
 Implement a **Seq2Seq architecture based on GRU**, including:
 
 - **Encoder**
+
 - **Decoder without Attention**
+
+![GRU Encoding image](img/GRU_model_without_attention.png)
+
 - **Decoder with Attention**
-![GRU Encoding image](./img/GRU_model.png)
+
+![GRU Encoding image](img/GRU_model_with_attention.png)
 
 The goal is to understand the difference between a standard Seq2Seq architecture and an Attention-based architecture, and how Attention improves the decoder's ability to focus on relevant parts of the input sequence.
 
@@ -49,6 +54,16 @@ The training process should cover:
 - Optimiser updates
 - Teacher forcing
 - Training and validation loss monitoring
+
+After training for 3,000 samples per epoch, we can visualize the training loss curve:
+
+![Seq2Seq Loss Curve](./img/seq2seq_loss.png)
+
+- The loss curve is automatically saved to `./img/seq2seq_loss.png`.
+
+Trained data suto-stored into model folder:
+
+![img.png](./img/trained_model.png)
 
 ### 5. Model Evaluation
 

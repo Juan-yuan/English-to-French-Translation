@@ -9,6 +9,7 @@ import time
 import random
 import matplotlib.pyplot as plt
 import torch
+from tqdm import tqdm
 
 device = torch.device(
     "mps" if torch.backends.mps.is_available() else "cpu"
@@ -545,6 +546,76 @@ def train_iters(x, y, my_encoder_rnn, my_attn_decoder_rnn, myadam_encode, myadam
 
     # 6. Return the average loss.
     return my_loss.item() / y_len
+
+# todo 12. Build the model training parameters, initialize the models and optimizers, and train for multiple epochs.
+def train_seq2seq():
+    # 1. Get the data loader.
+    my_dataloader = get_dataloader()
+    # 2. Initialize the models and move them to the GPU.
+    # 2.1 Encoder input dimension = English vocabulary size 2803, hidden dimension: 256.
+    my_encoder_rnn = EncoderGRU(english_word_n, 256).to(device)
+    # 2.2 Decoder input dimension = French vocabulary size 4345, hidden dimension: 256, dropout probability: 0.1, maximum sentence length.
+    my_attn_decoder_rnn = AttnDecoderGRU(french_word_n, 256, dropout_p=0.1, max_length=MAX_LENGTH).to(device)
+    # 3. Initialize the optimizers using Adam with a learning rate of 1e-4.
+    myadam_encode = optim.Adam(my_encoder_rnn.parameters(), lr=my_lr)       # Encoder -> optimizer.
+    myadam_decode = optim.Adam(my_attn_decoder_rnn.parameters(), lr=my_lr)  # Decoder -> optimizer.
+    # 4. Initialize the loss function using NLLLoss (Negative Log-Likelihood Loss).
+    my_crossentropy_loss = nn.NLLLoss()
+    # 5. Initialize training parameters.
+    plot_loss_list = []     # Store loss values for plotting.
+    # 6. Start the training loop.
+    # 6.1 Outer loop, controlling the number of training epochs.
+    for epoch_idx in range(1, epochs + 1):
+        # Initialize the loss accumulators for the current epoch.
+        print_loss_total, plot_loss_total = 0.0, 0.0
+        # Record the start time.
+        start_time = time.time()
+
+        # 6.2 Inner loop, iterate through each sample in the dataset (the actual training process for each epoch).
+        # for item, (x, y) in enumerate(my_dataloader, start=1):
+        for item, (x, y) in enumerate(tqdm(my_dataloader), start=1):
+            # Call the internal training function to train a single sample.
+            myloss = train_iters(x, y, my_encoder_rnn, my_attn_decoder_rnn, myadam_encode, myadam_decode, my_crossentropy_loss)
+            # Accumulate the loss.
+            print_loss_total += myloss
+            plot_loss_total += myloss
+            # 6.3 Print training logs -> print once every print_interval_num=1000 samples.
+            if item % print_interval_num == 0:
+                # Calculate the average loss.
+                print_loss_avg = print_loss_total / print_interval_num
+                # Reset the loss accumulator.
+                print_loss_total = 0.0
+                # Print training information: epoch, average loss, and elapsed time.
+                print(f'Epoch: {epoch_idx}, Loss: {print_loss_avg:.4f}, Time: {(time.time() - start_time):.2f} s')
+
+            # 6.4 Record the loss for plotting -> record once every plot_interval_num=100 samples.
+            if item % plot_interval_num == 0:
+                # Calculate the average loss.
+                plot_loss_avg = plot_loss_total / plot_interval_num
+                # Store the loss value.
+                plot_loss_list.append(plot_loss_avg)
+                # Reset the loss accumulator.
+                plot_loss_total = 0.0
+
+            # 6.5 Temporary extension: stop training after 3000 samples per epoch.
+            # Remove this condition in the actual implementation.
+            if item > 3000:
+                break
+
+        # 7. Reaching this point means one epoch has finished. Save the models.
+        torch.save(my_encoder_rnn.state_dict(), f'./model/my_encoder_rnn_{epoch_idx}.pth')
+        torch.save(my_attn_decoder_rnn.state_dict(), f'./model/my_attn_decoder_rnn_{epoch_idx}.pth')
+
+    # 8. Reaching this point means training has finished. Plot the loss curve.
+    plt.figure()
+    plt.plot(plot_loss_list)
+    plt.savefig('./img/seq2seq_loss.png')
+    plt.show()
+
+    # 9. Training has finished. Return the result.
+    return plot_loss_total      # Training loss list -> average loss every 100 samples.
+
+
 if __name__ == '__main__':
     # test data processing function
     english_word2index, english_index2word, english_word_n, french_word2index, french_index2word, french_word_n, my_pairs = my_getdata()
@@ -556,4 +627,5 @@ if __name__ == '__main__':
     # print(f'Number of French words: {french_word_n}')
     # get_dataloader()
     # dm_test_decoder()
-    dm_test_attn_decoder()
+    # dm_test_attn_decoder()
+    train_seq2seq()
